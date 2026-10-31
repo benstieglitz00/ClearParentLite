@@ -3,3 +3,8 @@ bin/
 obj/
 *.user
 *.suo
+App_Data/
+TestResults/
+*.local.json
+*.db
+.playwright/
