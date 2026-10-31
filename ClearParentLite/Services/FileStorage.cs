@@ -54,7 +54,11 @@ public class PrivateStorage(IWebHostEnvironment env, IConfiguration config) : IP
                 if (e.FullName.EndsWith(".rels",StringComparison.OrdinalIgnoreCase) || e.FullName=="[Content_Types].xml") {
                     if(e.Length>1024*1024) throw new InvalidDataException("Invalid Office metadata.");
                     using var stream=e.Open();
-                    var doc=XDocument.Load(stream);
+                    XDocument doc;
+                    try {
+                        using var reader=System.Xml.XmlReader.Create(stream,new System.Xml.XmlReaderSettings { DtdProcessing=System.Xml.DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=1024*1024 });
+                        doc=XDocument.Load(reader);
+                    } catch(System.Xml.XmlException) { throw new InvalidDataException("Invalid Office metadata."); }
                     if(doc.Descendants().Attributes().Any(a=>a.Value.Equals("External",StringComparison.OrdinalIgnoreCase) || a.Value.Contains("macroEnabled",StringComparison.OrdinalIgnoreCase))) throw new InvalidDataException("External links or macros in Word files are not supported.");
                 }
             }
@@ -68,10 +72,11 @@ public class PrivateStorage(IWebHostEnvironment env, IConfiguration config) : IP
         if(memory.Length>max) throw new InvalidDataException("File too large.");
         var bytes=memory.ToArray();
         var name=Path.GetFileName(file.FileName.Replace('\\','/'));
-        name=new string(name.Where(c=>!char.IsControl(c) && c is not '<' and not '>' and not ':' and not '"' and not '|' and not '?' and not '*').Take(180).ToArray());
+        name=new string(name.Where(c=>!char.IsControl(c) && c is not '<' and not '>' and not ':' and not '"' and not '|' and not '?' and not '*').ToArray());
+        if(name.Length>180) {var extension=Path.GetExtension(name);if(extension.Length>10)throw new InvalidDataException("Unsupported file extension.");name=name[..(180-extension.Length)]+extension;}
         var type=Validate(name,bytes); var key=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)); var path=PathFor(key);
-        await File.WriteAllBytesAsync(path,bytes,ct);
         try {
+            await File.WriteAllBytesAsync(path,bytes,ct);
             var scanner=config["Storage:ScannerExecutable"];
             if(!string.IsNullOrWhiteSpace(scanner)) {
                 var start=new System.Diagnostics.ProcessStartInfo(scanner) { UseShellExecute=false,CreateNoWindow=true };
@@ -82,6 +87,7 @@ public class PrivateStorage(IWebHostEnvironment env, IConfiguration config) : IP
                 if(process.ExitCode!=0) throw new InvalidDataException("The malware scanner rejected this file or could not scan it.");
             } else if(config.GetValue("Storage:RequireMalwareScan",!env.IsDevelopment())) throw new InvalidDataException("Uploads require a configured malware scanner.");
             return new Attachment { EntryId=entryId,UploadedByUserId=userId,OriginalFileName=name,StorageKey=key,ContentType=type,ByteLength=bytes.LongLength,Sha256=Convert.ToHexString(SHA256.HashData(bytes)) };
-        } catch { File.Delete(path); throw; }
+        } catch(System.ComponentModel.Win32Exception) { File.Delete(path);throw new InvalidDataException("The malware scanner is unavailable. Contact the operator."); }
+        catch { File.Delete(path); throw; }
     }
 }

@@ -19,9 +19,10 @@ public class AppFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public string DatabaseName { get; }="ClearParentLiteTest_"+Guid.NewGuid().ToString("N");
     public TestMail Mail { get; }=new();
+    public string StorageRoot=>Path.Combine(Directory.GetCurrentDirectory(),"App_Data","test-files",DatabaseName);
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         builder.UseEnvironment("Development");
-        builder.ConfigureAppConfiguration((_,c)=>c.AddInMemoryCollection(new Dictionary<string,string?> { ["App:PublicOrigin"]="https://localhost",["Storage:Root"]=Path.Combine(Directory.GetCurrentDirectory(),"App_Data","test-files"),["Storage:RequireMalwareScan"]="false" }));
+        builder.ConfigureAppConfiguration((_,c)=>c.AddInMemoryCollection(new Dictionary<string,string?> { ["App:PublicOrigin"]="https://localhost",["Storage:Root"]=StorageRoot,["Storage:RequireMalwareScan"]="false" }));
         builder.ConfigureServices(s=>{
             s.RemoveAll<DbContextOptions<AppDbContext>>();s.AddDbContext<AppDbContext>(o=>o.UseSqlServer($"Server=(localdb)\\MSSQLLocalDB;Database={DatabaseName};Trusted_Connection=True;TrustServerCertificate=True"));
             s.RemoveAll<IEmailService>();s.AddSingleton<IEmailService>(Mail);
@@ -38,7 +39,12 @@ public class AppFactory : WebApplicationFactory<Program>, IAsyncLifetime
             await users.AddToRoleAsync(user,address.StartsWith("guest")?"Read-only Guest":"Parent");
         }
     }
-    async Task IAsyncLifetime.DisposeAsync() { using var scope=Services.CreateScope();await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();await base.DisposeAsync(); }
+    async Task IAsyncLifetime.DisposeAsync() {
+        using var scope=Services.CreateScope();await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();await base.DisposeAsync();
+        var permitted=Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),"App_Data","test-files"))+Path.DirectorySeparatorChar;
+        if(!Path.GetFullPath(StorageRoot).StartsWith(permitted,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Unsafe test cleanup path.");
+        if(Directory.Exists(StorageRoot))Directory.Delete(StorageRoot,true);
+    }
     public static async Task<string> Token(HttpClient client,string path) {
         var response=await client.GetAsync(path);response.EnsureSuccessStatusCode();var doc=new HtmlParser().ParseDocument(await response.Content.ReadAsStringAsync());return doc.QuerySelector("input[name=__RequestVerificationToken]")?.GetAttribute("value") ?? throw new Exception("CSRF token missing at "+path);
     }

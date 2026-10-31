@@ -30,6 +30,7 @@ public class AccountController(UserManager<ApplicationUser> users, SignInManager
         await email.Send(user.Email!, "Confirm your ClearParent Lite account", $"Confirm your account: {Origin}/account/confirm?userId={Uri.EscapeDataString(user.Id)}&code={code}");
     }
     [HttpGet("confirm")] public async Task<IActionResult> Confirm(string userId, string code) {
+        if(string.IsNullOrWhiteSpace(userId)||string.IsNullOrWhiteSpace(code))return BadRequest("This confirmation link is incomplete.");
         var user = await users.FindByIdAsync(userId);
         if (user is null || user.DisabledUtc != null) return BadRequest();
         try { var result = await users.ConfirmEmailAsync(user, Decode(code)); return View("Message", result.Succeeded ? "Email confirmed. You can now sign in." : "This confirmation link is invalid or expired."); } catch (FormatException) { return BadRequest(); }
@@ -60,7 +61,7 @@ public class AccountController(UserManager<ApplicationUser> users, SignInManager
         var user = await users.FindByEmailAsync(input.Email); if (user is { EmailConfirmed: false, DisabledUtc: null }) await SendConfirmation(user);
         return View("Message", "If an eligible account exists, a confirmation email has been sent.");
     }
-    [HttpGet("reset-password")] public IActionResult Reset(string email, string code) => View(new ResetInput { Email = email, Code = code });
+    [HttpGet("reset-password")] public IActionResult Reset(string email, string code) => string.IsNullOrWhiteSpace(email)||string.IsNullOrWhiteSpace(code)?BadRequest("This reset link is incomplete."):View(new ResetInput { Email = email, Code = code });
     [HttpPost("reset-password")] public async Task<IActionResult> Reset(ResetInput input) {
         if (!ModelState.IsValid) return View(input);
         var user = await users.FindByEmailAsync(input.Email);
@@ -79,7 +80,7 @@ public class AccountController(UserManager<ApplicationUser> users, SignInManager
         var address = info.Principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
         if (string.IsNullOrWhiteSpace(address) || await users.FindByEmailAsync(address) != null) return View("Message", "An account with this email may already exist. Sign in with your password. Accounts are never linked automatically by email.");
         // Require our own confirmation, even when an external provider supplies an email.
-        var user = new ApplicationUser { UserName = address, Email = address, DisplayName = info.Principal.Identity?.Name ?? "Parent" };
+        var user = new ApplicationUser { UserName = address, Email = address, DisplayName = new string((info.Principal.Identity?.Name ?? "Parent").Take(100).ToArray()) };
         var result = await users.CreateAsync(user); if (!result.Succeeded) return View("Message", "Unable to create this account.");
         var login = await users.AddLoginAsync(user, info); if (!login.Succeeded) { await users.DeleteAsync(user); return BadRequest(); }
         await ParentRole(user); await SendConfirmation(user); return View("Message", "Confirm the email we sent, then sign in with Google again.");

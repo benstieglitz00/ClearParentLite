@@ -2,6 +2,10 @@ using ClearParentLite.Services;
 namespace ClearParentLite.Tests;
 public class ContentTests
 {
+    [Fact] public void QuillBulletListsRemainBulletsAndBlockTextHasSpaces() {
+        var service=new ContentService();var clean=service.Sanitize("<ol><li data-list='bullet'>One</li><li data-list='bullet'>Two</li><li data-list='ordered'>Three</li></ol>");
+        Assert.Equal("<ul><li>One</li><li>Two</li></ul><ol><li>Three</li></ol>",clean);Assert.Equal("Line one Line two",service.Text("<p>Line one</p><p>Line two</p>"));
+    }
     [Fact] public void SanitizerRemovesActiveContentAndTracking() {
         var service=new ContentService();
         var clean=service.Sanitize("<p onclick='alert(1)'>Hello <strong>parent</strong></p><script>alert(1)</script><img src='https://tracker.example/pixel'><svg onload='alert(2)'></svg><a href='javascript:alert(1)'>bad</a>");

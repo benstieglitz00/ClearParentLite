@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ClearParentLite.Controllers;
 public class SharesController(AppDbContext db,AccessService access,UserManager<ApplicationUser> users,IEmailService email,IConfiguration config) : Controller
 {
-    async Task<SharesPage> Page(ShareInput input) => new(await db.Shares.Where(s=>s.OwnerUserId==access.UserId).Include(s=>s.Entries).OrderByDescending(s=>s.CreatedUtc).ToListAsync(),await db.Entries.Where(e=>e.OwnerUserId==access.UserId).OrderByDescending(e=>e.EventDate).ToListAsync(),input);
+    async Task<SharesPage> Page(ShareInput input) => new(await db.Shares.Where(s=>s.OwnerUserId==access.UserId).Include(s=>s.Entries).OrderByDescending(s=>s.CreatedUtc).ToListAsync(),await db.Entries.AsNoTracking().Where(e=>e.OwnerUserId==access.UserId).OrderByDescending(e=>e.EventDate).Select(e=>new TimelineEntry { Id=e.Id,Title=e.Title,EventDate=e.EventDate }).ToListAsync(),input);
     [Authorize(Policy="Parent"),HttpGet("/shares")] public async Task<IActionResult> Index() => View(await Page(new()));
     [Authorize(Policy="Parent"),HttpPost("/shares")] public async Task<IActionResult> Create(ShareInput input) {
         if(!Enum.IsDefined(input.Scope) || !Enum.IsDefined(input.AccessMethod)) return BadRequest();
@@ -33,7 +33,7 @@ public class SharesController(AppDbContext db,AccessService access,UserManager<A
     [AllowAnonymous,HttpGet("/s/{token}"),Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account")]
     public async Task<IActionResult> Link(string token) {
         if(token.Length!=64) return NotFound(); var hash=AccessService.Hash(token); var now=DateTime.UtcNow;
-        var grant=await db.Shares.SingleOrDefaultAsync(s=>s.TokenHash==hash && s.AccessMethod==ShareMethod.Link && s.RevokedUtc==null && s.ExpiresUtc>now); if(grant==null) return NotFound();
+        var grant=await db.Shares.SingleOrDefaultAsync(s=>s.TokenHash==hash && s.AccessMethod==ShareMethod.Link && s.RevokedUtc==null && s.ExpiresUtc>now && db.Users.Any(u=>u.Id==s.OwnerUserId && u.DisabledUtc==null)); if(grant==null) return NotFound();
         access.SetLinkCookie(grant); access.Audit(grant.OwnerUserId,"ShareOpened","Share",grant.Id.ToString()); await db.SaveChangesAsync(); return Redirect($"/shared/{grant.Id}");
     }
     [Authorize,HttpGet("/invitations/{id:guid}")] public async Task<IActionResult> Invitation(Guid id) {
@@ -52,7 +52,7 @@ public class SharesController(AppDbContext db,AccessService access,UserManager<A
     [AllowAnonymous,HttpGet("/shared/{id:guid}")] public async Task<IActionResult> Shared(Guid id,int page=1) {
         var grant=await access.ActiveGrants().SingleOrDefaultAsync(s=>s.Id==id); if(grant==null) return NotFound();
         page=Math.Clamp(page,1,100000);
-        var entries=await db.Entries.AsNoTracking().Where(e=>e.OwnerUserId==grant.OwnerUserId && (grant.Scope==ShareScope.Timeline || db.ShareEntries.Any(se=>se.ShareGrantId==id && se.EntryId==e.Id))).OrderByDescending(e=>e.EventDate).ThenBy(e=>e.Id).Skip((page-1)*25).Take(26).ToListAsync();
+        var entries=await db.Entries.AsNoTracking().Where(e=>e.OwnerUserId==grant.OwnerUserId && (grant.Scope==ShareScope.Timeline || db.ShareEntries.Any(se=>se.ShareGrantId==id && se.EntryId==e.Id))).OrderByDescending(e=>e.EventDate).ThenBy(e=>e.Id).Skip((page-1)*25).Take(26).Select(e=>new TimelineRow(e.Id,e.Title,e.EventDate,e.CreatedUtc,e.UpdatedUtc,0,0)).ToListAsync();
         ViewBag.ShareId=id; return View(new TimelinePage(entries.Take(25).ToList(),page,entries.Count>25,null,null,null));
     }
 }

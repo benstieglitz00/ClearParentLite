@@ -6,6 +6,7 @@
 <label asp-for="EventDate">Occurred on</label><input asp-for="EventDate" type="date" /><small>The event date can be different from the date you record it.</small>
 <label asp-for="DescriptionHtml"></label><textarea asp-for="DescriptionHtml" class="rich-source" data-editor></textarea>
 <input asp-for="RowVersion" type="hidden" />
+<input asp-for="RequestId" type="hidden" />
 @if(Model.Id.HasValue){<label asp-for="ChangeReason"></label><input asp-for="ChangeReason" /><p class="muted">Edits are saved as a new revision. Existing revisions remain available.</p>}
 <label for="entry-files">Attachments &amp; screenshots</label><input id="entry-files" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx" multiple data-entry-files /><small>Drop files here or paste screenshots into the editor. Up to 20 MB each. New-entry files upload after the entry is saved.</small><div data-file-status role="status" aria-live="polite"></div>
 <div class="actions"><button type="submit" class="primary">Save entry</button><a href="@(Model.Id.HasValue?$"/entries/{Model.Id}":"/timeline")">Cancel</a></div></form></div>

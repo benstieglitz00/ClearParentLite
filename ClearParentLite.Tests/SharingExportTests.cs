@@ -8,6 +8,7 @@ using ClearParentLite.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 namespace ClearParentLite.Tests;
+[Collection("SQL integration")]
 public class SharingExportTests(AppFactory app) : IClassFixture<AppFactory>
 {
     static async Task<string> Entry(HttpClient c,string title,string date="2026-10-12") {

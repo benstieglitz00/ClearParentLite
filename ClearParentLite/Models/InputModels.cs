@@ -24,6 +24,7 @@ public class ResetInput : EmailInput
 }
 public class EntryInput
 {
+    public Guid RequestId { get; set; } = Guid.NewGuid();
     public Guid? Id { get; set; }
     [Required, MaxLength(200)] public string Title { get; set; } = "";
     [Required, MaxLength(100000), Display(Name="Description")] public string DescriptionHtml { get; set; } = "";
@@ -33,12 +34,13 @@ public class EntryInput
 }
 public class ShareInput
 {
-    public ShareScope Scope { get; set; }
+    public ShareScope Scope { get; set; } = ShareScope.SelectedEntries;
     public ShareMethod AccessMethod { get; set; }
     [EmailAddress, MaxLength(256)] public string? Email { get; set; }
     public Guid[] EntryIds { get; set; } = [];
     [Range(1,90)] public int Days { get; set; } = 7;
 }
-public record TimelinePage(List<TimelineEntry> Entries, int Page, bool HasMore, string? Q, DateOnly? From, DateOnly? To);
+public record TimelineRow(Guid Id,string Title,DateOnly EventDate,DateTime CreatedUtc,DateTime UpdatedUtc,int UpdateCount,int AttachmentCount);
+public record TimelinePage(List<TimelineRow> Entries, int Page, bool HasMore, string? Q, DateOnly? From, DateOnly? To);
 public record EntryDetail(TimelineEntry Entry, bool IsOwner, Guid? ShareId);
 public record SharesPage(List<ShareGrant> Grants, List<TimelineEntry> Entries, ShareInput Input);

@@ -9,6 +9,20 @@ using System.Text;
 namespace ClearParentLite.Tests;
 public class HardeningTests
 {
+    [Fact] public async Task LongValidFilenamesKeepTheirExtension() {
+        var env=new EnvironmentStub { EnvironmentName="Development" };var root=Path.Combine(env.ContentRootPath,Guid.NewGuid().ToString("N"));
+        var config=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{["Storage:Root"]=root}).Build();var service=new PrivateStorage(env,config);
+        var attachment=await service.Store(File(Encoding.ASCII.GetBytes("%PDF-1.4\n%%EOF"),new string('a',240)+".pdf"),Guid.NewGuid(),"owner",default);
+        Assert.EndsWith(".pdf",attachment.OriginalFileName);Assert.True(attachment.OriginalFileName.Length<=180);service.Delete(attachment.StorageKey);Directory.Delete(root);
+    }
+    [Theory] [InlineData("<broken")] [InlineData("<!DOCTYPE Types [<!ENTITY a 'payload'>]><Types>&a;</Types>")]
+    public void MalformedOrEntityBearingOfficeMetadataIsRejected(string xml) {
+        using var memory=new MemoryStream();using(var zip=new ZipArchive(memory,ZipArchiveMode.Create,true)) {
+            using(var writer=new StreamWriter(zip.CreateEntry("[Content_Types].xml").Open()))writer.Write(xml);
+            using(var writer=new StreamWriter(zip.CreateEntry("word/document.xml").Open()))writer.Write("<document/>");
+        }
+        Assert.Throws<InvalidDataException>(()=>PrivateStorage.Validate("document.docx",memory.ToArray()));
+    }
     sealed class EnvironmentStub : IWebHostEnvironment {
         public string ApplicationName {get;set;}="Tests";public string EnvironmentName {get;set;}="Production";
         public string ContentRootPath {get;set;}=Path.Combine(Directory.GetCurrentDirectory(),"App_Data","storage-tests");

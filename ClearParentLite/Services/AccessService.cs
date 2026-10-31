@@ -20,13 +20,13 @@ public class AccessService(AppDbContext db, IHttpContextAccessor accessor, IData
             if (value is null) return (null, null);
             var parts = protection.CreateProtector("share-access-v1").Unprotect(value).Split(':');
             return parts.Length == 2 && Guid.TryParse(parts[0], out var id) ? (id, parts[1]) : (null, null);
-        } catch (CryptographicException) { return (null, null); }
+        } catch (Exception ex) when(ex is CryptographicException or FormatException or ArgumentException) { return (null, null); }
     }
     public IQueryable<ShareGrant> ActiveGrants() {
         var now = DateTime.UtcNow; var (id, hash) = CookieGrant(); var userId = UserId;
-        return db.Shares.Where(s => s.RevokedUtc == null && (s.ExpiresUtc == null || s.ExpiresUtc > now) &&
+        return db.Shares.Where(s => s.RevokedUtc == null && (s.ExpiresUtc == null || s.ExpiresUtc > now) && db.Users.Any(u=>u.Id==s.OwnerUserId && u.DisabledUtc==null) &&
             ((s.AccessMethod == ShareMethod.Link && s.Id == id && s.TokenHash == hash) ||
-             (s.AccessMethod == ShareMethod.Invitation && s.InvitedUserId != null && s.InvitedUserId == userId)));
+             (s.AccessMethod == ShareMethod.Invitation && s.InvitedUserId != null && s.InvitedUserId == userId && db.Users.Any(u=>u.Id==userId && u.EmailConfirmed && u.DisabledUtc==null && u.NormalizedEmail==s.InvitedEmailNormalized))));
     }
     public async Task<bool> CanRead(TimelineEntry entry) => entry.OwnerUserId == UserId || await ActiveGrants().AnyAsync(s => s.OwnerUserId == entry.OwnerUserId && (s.Scope == ShareScope.Timeline || s.Entries.Any(e => e.EntryId == entry.Id)));
     public async Task<bool> InGrant(Guid shareId, TimelineEntry entry) => await ActiveGrants().AnyAsync(s => s.Id == shareId && s.OwnerUserId == entry.OwnerUserId && (s.Scope == ShareScope.Timeline || s.Entries.Any(e => e.EntryId == entry.Id)));

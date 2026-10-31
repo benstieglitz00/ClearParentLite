@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using AngleSharp.Html.Parser;
 namespace ClearParentLite.Tests;
+[Collection("SQL integration")]
 public class IntegrationTests(AppFactory app) : IClassFixture<AppFactory>
 {
     [Fact] public async Task RegistrationConfirmationResetAndAntiforgeryWork() {
@@ -33,6 +34,7 @@ public class IntegrationTests(AppFactory app) : IClassFixture<AppFactory>
         var current=new HtmlParser().ParseDocument(await alice.GetStringAsync(path+"/edit"));
         var raceToken=await AppFactory.Token(alice,path+"/edit");
         data["RowVersion"]=current.QuerySelector("[name=RowVersion]")!.GetAttribute("value")!;data["__RequestVerificationToken"]=raceToken;
+        data["DescriptionHtml"]="<p>A real concurrent edit</p>";
         var race=await Task.WhenAll(alice.PostAsync(path+"/edit",new FormUrlEncodedContent(data)),alice.PostAsync(path+"/edit",new FormUrlEncodedContent(data)));
         Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Redirect);Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Conflict);
         Assert.Equal(HttpStatusCode.Redirect,(await AppFactory.Post(alice,path+"/updates",new(){["bodyHtml"]="<p>Followup-unique-search</p>"},path)).StatusCode);

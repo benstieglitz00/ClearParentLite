@@ -59,7 +59,7 @@ public partial class Program
             context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
             context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
             context.Response.Headers.CacheControl = "no-store";
-            if (context.Request.Path.StartsWithSegments("/entries") || context.Request.Path.StartsWithSegments("/shared") || context.Request.Path.StartsWithSegments("/s") || context.Request.Path.StartsWithSegments("/attachments") || context.Request.Path.StartsWithSegments("/account")) context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+            if (context.Request.Path.StartsWithSegments("/entries") || context.Request.Path.StartsWithSegments("/shared") || context.Request.Path.StartsWithSegments("/s") || context.Request.Path.StartsWithSegments("/attachments") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/timeline") || context.Request.Path.StartsWithSegments("/shares") || context.Request.Path.StartsWithSegments("/exports") || context.Request.Path.StartsWithSegments("/settings") || context.Request.Path.StartsWithSegments("/invitations") || context.Request.Path.StartsWithSegments("/admin")) context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
             await next();
         });
         app.UseStaticFiles(); app.UseRouting(); app.UseRateLimiter(); app.UseAuthentication();
