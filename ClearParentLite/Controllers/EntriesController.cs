@@ -9,6 +9,7 @@ namespace ClearParentLite.Controllers;
 public class EntriesController(AppDbContext db, AccessService access, ContentService content) : Controller
 {
     [HttpGet("/timeline")] public async Task<IActionResult> Index(string? q, DateOnly? from, DateOnly? to, int page = 1) {
+        if(!ModelState.IsValid || (from.HasValue && to.HasValue && from>to)) return BadRequest("Enter a valid date range.");
         page = Math.Clamp(page,1,100000); if (q?.Length > 200) return BadRequest();
         var query = db.Entries.AsNoTracking().Where(e => e.OwnerUserId == access.UserId);
         if (!string.IsNullOrWhiteSpace(q)) query = query.Where(e => e.Title.Contains(q) || e.SearchText.Contains(q) || e.Updates.Any(u => !u.IsDeleted && u.SearchText.Contains(q)));
@@ -42,13 +43,19 @@ public class EntriesController(AppDbContext db, AccessService access, ContentSer
         input.Id = id; ViewBag.EntryId = id;
         input.DescriptionHtml = content.Sanitize(input.DescriptionHtml, entry.Attachments.Where(a=>!a.IsDeleted).Select(a=>a.Id));
         if (!content.HasContent(input.DescriptionHtml)) ModelState.AddModelError("DescriptionHtml", "Add a description.");
-        byte[] version; try { version = Convert.FromBase64String(input.RowVersion); } catch (FormatException) { return BadRequest(); }
+        byte[] version; try { version = Convert.FromBase64String(input.RowVersion ?? ""); } catch (FormatException) { return BadRequest(); }
+        if(version.Length!=8) return BadRequest("A valid edit version is required.");
         if (!ModelState.IsValid) return View(input);
         db.Entry(entry).Property(e=>e.RowVersion).OriginalValue = version;
         entry.Title = input.Title.Trim(); entry.DescriptionHtml = input.DescriptionHtml; entry.EventDate = input.EventDate!.Value; entry.SearchText = content.Text(input.DescriptionHtml); entry.UpdatedUtc = DateTime.UtcNow;
-        var revision = await db.Revisions.Where(r=>r.EntryId==id).MaxAsync(r=>r.RevisionNumber) + 1;
-        entry.Revisions.Add(Snapshot(entry,revision,input.ChangeReason));
-        try { await db.SaveChangesAsync(); } catch (DbUpdateConcurrencyException) { ModelState.AddModelError("", "This entry changed in another window. Your draft is preserved below. Open the latest entry in a new tab and reconcile before saving."); Response.StatusCode = 409; return View(input); }
+        try {
+            await using var tx=await db.Database.BeginTransactionAsync();
+            // Acquire the entry's write lock and verify its version before allocating a revision number.
+            await db.SaveChangesAsync();
+            var revision=await db.Revisions.Where(r=>r.EntryId==id).MaxAsync(r=>r.RevisionNumber)+1;
+            db.Revisions.Add(Snapshot(entry,revision,input.ChangeReason));
+            await db.SaveChangesAsync(); await tx.CommitAsync();
+        } catch (DbUpdateConcurrencyException) { ModelState.AddModelError("", "This entry changed in another window. Your draft is preserved below. Open the latest entry in a new tab and reconcile before saving."); Response.StatusCode = 409; return View(input); }
         return Redirect($"/entries/{id}");
     }
     [HttpPost("/entries/{id:guid}/updates")] public async Task<IActionResult> Update(Guid id, string bodyHtml) {
@@ -56,8 +63,11 @@ public class EntriesController(AppDbContext db, AccessService access, ContentSer
         if (bodyHtml?.Length > 100000) return BadRequest(); var clean = content.Sanitize(bodyHtml ?? "",entry.Attachments.Where(a=>!a.IsDeleted).Select(a=>a.Id));
         if (!content.HasContent(clean)) { TempData["Notice"] = "Write an update before saving."; return Redirect($"/entries/{id}"); }
         db.Updates.Add(new EntryUpdate { EntryId = id, AuthorUserId = access.UserId!, BodyHtml = clean, SearchText = content.Text(clean) });
-        entry.UpdatedUtc = DateTime.UtcNow;
-        try { await db.SaveChangesAsync(); } catch (DbUpdateConcurrencyException) { TempData["Notice"] = "The entry changed. Please retry your update."; }
+        await using var tx=await db.Database.BeginTransactionAsync();
+        // An append does not overwrite description/title, so it need not fail on a concurrent append.
+        var changed=await db.Entries.Where(e=>e.Id==id && e.OwnerUserId==access.UserId).ExecuteUpdateAsync(s=>s.SetProperty(e=>e.UpdatedUtc,DateTime.UtcNow));
+        if(changed==0) return NotFound();
+        await db.SaveChangesAsync();await tx.CommitAsync();
         return Redirect($"/entries/{id}");
     }
     [HttpPost("/entries/{id:guid}/delete")] public async Task<IActionResult> Delete(Guid id) {

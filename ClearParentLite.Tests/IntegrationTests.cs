@@ -23,19 +23,28 @@ public class IntegrationTests(AppFactory app) : IClassFixture<AppFactory>
     public async Task PublicPagesRender(string path) { using var c=app.Client();var response=await c.GetAsync(path);response.EnsureSuccessStatusCode();Assert.Equal("nosniff",response.Headers.GetValues("X-Content-Type-Options").Single()); }
     [Fact] public async Task TimelineOwnershipRevisionsSearchAndConcurrency() {
         using var alice=await app.Login("alice@example.test");using var bob=await app.Login("bob@example.test");
-        var created=await AppFactory.Post(alice,"/entries/new",new(){["Title"]="Private school meeting",["EventDate"]="2026-10-20",["DescriptionHtml"]="<p>Initial notes <script>alert(1)</script></p>"});Assert.Equal(HttpStatusCode.Redirect,created.StatusCode);var path=created.Headers.Location!.ToString();
+        var created=await AppFactory.Post(alice,"/entries/new",new(){["Title"]="Private school meeting",["EventDate"]="2026-10-20",["DescriptionHtml"]="<p>Initial notes <script>alert(1)</script></p>",["RowVersion"]=""});Assert.Equal(HttpStatusCode.Redirect,created.StatusCode);var path=created.Headers.Location!.ToString();
         Assert.Equal(HttpStatusCode.NotFound,(await bob.GetAsync(path)).StatusCode);Assert.Equal(HttpStatusCode.NotFound,(await bob.GetAsync(path+"/edit")).StatusCode);
         foreach(var action in new[]{"edit","updates","delete","attachments"}) {var r=await AppFactory.Post(bob,path+"/"+action,new(){["Title"]="forged",["DescriptionHtml"]="<p>bad</p>",["EventDate"]="2026-10-21",["bodyHtml"]="bad"},"/entries/new");Assert.Equal(HttpStatusCode.NotFound,r.StatusCode);}
         var form=new HtmlParser().ParseDocument(await alice.GetStringAsync(path+"/edit"));var version=form.QuerySelector("[name=RowVersion]")!.GetAttribute("value")!;
         var data=new Dictionary<string,string>{["Title"]="Revised school meeting",["DescriptionHtml"]="<p>Revised notes</p>",["EventDate"]="2026-10-20",["RowVersion"]=version};
         Assert.Equal(HttpStatusCode.Redirect,(await AppFactory.Post(alice,path+"/edit",new(data))).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict,(await AppFactory.Post(alice,path+"/edit",new(data))).StatusCode);
+        var current=new HtmlParser().ParseDocument(await alice.GetStringAsync(path+"/edit"));
+        var raceToken=await AppFactory.Token(alice,path+"/edit");
+        data["RowVersion"]=current.QuerySelector("[name=RowVersion]")!.GetAttribute("value")!;data["__RequestVerificationToken"]=raceToken;
+        var race=await Task.WhenAll(alice.PostAsync(path+"/edit",new FormUrlEncodedContent(data)),alice.PostAsync(path+"/edit",new FormUrlEncodedContent(data)));
+        Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Redirect);Assert.Single(race,r=>r.StatusCode==HttpStatusCode.Conflict);
         Assert.Equal(HttpStatusCode.Redirect,(await AppFactory.Post(alice,path+"/updates",new(){["bodyHtml"]="<p>Followup-unique-search</p>"},path)).StatusCode);
+        var updateToken=await AppFactory.Token(alice,path);
+        var appends=await Task.WhenAll(alice.PostAsync(path+"/updates",new FormUrlEncodedContent(new Dictionary<string,string>{["bodyHtml"]="Concurrent update A",["__RequestVerificationToken"]=updateToken})),alice.PostAsync(path+"/updates",new FormUrlEncodedContent(new Dictionary<string,string>{["bodyHtml"]="Concurrent update B",["__RequestVerificationToken"]=updateToken})));
+        Assert.All(appends,r=>Assert.Equal(HttpStatusCode.Redirect,r.StatusCode));
         var search=await alice.GetStringAsync("/timeline?q=Followup-unique-search&from=2026-10-20&to=2026-10-20");Assert.Contains("Revised school meeting",search);
         Assert.DoesNotContain("Revised school meeting",await bob.GetStringAsync("/timeline?q=school"));
         Assert.DoesNotContain("Revised school meeting",await alice.GetStringAsync("/timeline?from=2026-10-21"));
         var detail=await alice.GetStringAsync(path);Assert.Contains("Version 1",detail);Assert.Contains("Version 2",detail);Assert.DoesNotContain("<script>alert(1)",detail);
         using var scope=app.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();var id=Guid.Parse(path.Split('/').Last());
+        Assert.Equal(3,await db.Revisions.CountAsync(r=>r.EntryId==id));Assert.Equal(3,await db.Updates.CountAsync(u=>u.EntryId==id));
         var revision=await db.Revisions.FirstAsync(r=>r.EntryId==id);revision.Title="tampered";await Assert.ThrowsAsync<InvalidOperationException>(()=>db.SaveChangesAsync());
     }
 }

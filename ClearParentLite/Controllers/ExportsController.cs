@@ -13,6 +13,7 @@ public class ExportsController(AppDbContext db,AccessService access,IExportServi
     static readonly SemaphoreSlim Gate=new(1,1);
     [HttpGet("/exports")] public async Task<IActionResult> Index(Guid? selected) {ViewBag.Selected=selected;return View(await db.Entries.AsNoTracking().Where(e=>e.OwnerUserId==access.UserId).OrderByDescending(e=>e.EventDate).Take(500).ToListAsync());}
     [HttpPost("/exports")] public async Task<IActionResult> Create(string format,string scope,Guid[] entryIds,DateOnly? from,DateOnly? to,CancellationToken ct) {
+        if(!ModelState.IsValid) return BadRequest("Invalid export selection or date range.");
         if(format is not ("pdf" or "zip") || scope is not ("all" or "selected" or "dates") || (from.HasValue && to.HasValue && from>to))return BadRequest("Invalid export options.");
         var query=db.Entries.AsNoTracking().Where(e=>e.OwnerUserId==access.UserId);
         if(scope=="selected") {

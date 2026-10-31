@@ -29,12 +29,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
         b.Entity<ShareGrantEntry>().HasOne<TimelineEntry>().WithMany().HasForeignKey(e => e.EntryId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<AuditEvent>().HasIndex(e => new { e.OwnerUserId, e.OccurredUtc });
     }
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    void ValidateImmutability()
     {
         if (ChangeTracker.Entries<EntryRevision>().Any(e => e.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Entry revisions are immutable.");
         if (ChangeTracker.Entries<EntryUpdate>().Any(e => e.State is EntityState.Modified or EntityState.Deleted))
             throw new InvalidOperationException("Updates are append-only.");
-        return base.SaveChangesAsync(cancellationToken);
     }
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) { ValidateImmutability(); return base.SaveChanges(acceptAllChangesOnSuccess); }
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) { ValidateImmutability(); return base.SaveChangesAsync(acceptAllChangesOnSuccess,cancellationToken); }
 }

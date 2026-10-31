@@ -28,7 +28,7 @@ public class EntryInput
     [Required, MaxLength(200)] public string Title { get; set; } = "";
     [Required, MaxLength(100000), Display(Name="Description")] public string DescriptionHtml { get; set; } = "";
     [Required, DataType(DataType.Date), Display(Name="Event date")] public DateOnly? EventDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
-    public string RowVersion { get; set; } = "";
+    public string? RowVersion { get; set; }
     [MaxLength(500), Display(Name="Reason for edit (optional)")] public string? ChangeReason { get; set; }
 }
 public class ShareInput

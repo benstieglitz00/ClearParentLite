@@ -1,0 +1,13 @@
+/* Keep compact secondary labels legible on the light workspace surfaces. */
+.muted, small, .audit-dates, .eyebrow, .workspace-label, .sidebar-note,
+.timeline-row time, .list-heading, .preview-date, .preview-bottom,
+.hero small, .preview-event small, .hero .eyebrow, .intro p,
+.feature-grid p, .hero p, .resource-card>span:last-child, footer,
+.count, .badge, .tag, .back, .update time { color: #626b7c; }
+h1, h2, h3, .timeline-row strong { overflow-wrap: anywhere; }
+.timeline-row>span { min-width: 0; }
+.prose img, .ql-editor img { display: block; margin: 12px 0; border-radius: 6px; }
+.auth form button { margin-bottom: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}

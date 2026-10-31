@@ -11,6 +11,8 @@ public partial class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        if(!builder.Environment.IsDevelopment() && (builder.Configuration.GetConnectionString("DefaultConnection")?.Contains("(localdb)",StringComparison.OrdinalIgnoreCase) ?? true))
+            throw new InvalidOperationException("Production requires an explicit SQL Server connection string; the development LocalDB default is not permitted.");
         PdfSharp.Fonts.GlobalFontSettings.UseWindowsFontsUnderWindows = true;
         builder.Services.AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
         builder.Services.AddHttpContextAccessor();
@@ -49,6 +51,7 @@ public partial class Program
         }
         if (!app.Environment.IsDevelopment()) { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
         app.UseHttpsRedirection();
+        app.UseStatusCodePagesWithReExecute("/status/{0}");
         app.Use(async (context, next) => {
             context.Response.Headers["X-Content-Type-Options"] = "nosniff";
             context.Response.Headers["X-Frame-Options"] = "DENY";

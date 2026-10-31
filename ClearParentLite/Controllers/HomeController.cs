@@ -8,6 +8,8 @@ namespace ClearParentLite.Controllers
     {
         [HttpGet("/resources")]
         public IActionResult Resources() => View();
+        [Route("/status/{code:int}"), IgnoreAntiforgeryToken]
+        public IActionResult StatusPage(int code) { Response.StatusCode = code is >=400 and <=599 ? code : 404; ViewBag.StatusCode=Response.StatusCode; return View(); }
         public IActionResult Index()
         {
             return View();

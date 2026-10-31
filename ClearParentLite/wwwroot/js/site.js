@@ -11,8 +11,11 @@ function setupEditors(root=document){
       quill=new Quill(host,{theme:'snow',modules:{toolbar:[['bold','italic','underline'],[{header:[2,3,false]}],[{list:'ordered'},{list:'bullet'}],['blockquote','clean']]},formats:['bold','italic','underline','header','list','blockquote','image']});
       quill.clipboard.dangerouslyPasteHTML(source.value||'');
       quill.root.setAttribute('aria-label',source.name==='bodyHtml'?'Update text':'Entry description');
+      quill.root.setAttribute('role','textbox');quill.root.setAttribute('aria-multiline','true');
+      form.querySelectorAll('.ql-toolbar button').forEach(button=>{const name=[...button.classList].find(c=>c.startsWith('ql-'))?.slice(3)||'format';button.setAttribute('aria-label',button.value?name+' '+button.value:name);});
+      form.querySelectorAll('.ql-picker-label').forEach(label=>label.setAttribute('aria-label','Text heading style'));
       const add=file=>{pending.push({file,index:null,url:null});status.textContent=pending.length+' file(s) ready to upload.';};
-      quill.root.addEventListener('paste',e=>{const images=[...e.clipboardData.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/'));if(!images.length)return;e.preventDefault();e.stopImmediatePropagation();images.forEach(item=>{const file=item.getAsFile();if(!file)return;const url=URL.createObjectURL(file);const range=quill.getSelection(true);quill.insertEmbed(range.index,'image',url,'user');quill.setSelection(range.index+1);pending.push({file,url});status.textContent=pending.length+' screenshot(s) ready to upload.';});},true);
+      quill.root.addEventListener('paste',e=>{const images=[...e.clipboardData.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/'));if(!images.length)return;e.preventDefault();e.stopImmediatePropagation();images.forEach(item=>{const file=item.getAsFile();if(!file)return;const reader=new FileReader();reader.onload=()=>{const url=reader.result;const range=quill.getSelection(true);quill.insertEmbed(range.index,'image',url,'user');quill.setSelection(range.index+1);pending.push({file,url});status.textContent=pending.length+' screenshot(s) ready to upload.';};reader.readAsDataURL(file);});},true);
       form.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault();});
       form.addEventListener('drop',e=>{if(e.dataTransfer.files.length){e.preventDefault();[...e.dataTransfer.files].forEach(add);}});
       const fileInput=form.querySelector('[data-entry-files]');if(fileInput)fileInput.addEventListener('change',()=>{[...fileInput.files].forEach(add);fileInput.value='';});
@@ -28,7 +31,7 @@ function setupEditors(root=document){
       try{
         if(!id){
           const data=new FormData(form);
-          if(pending.some(x=>x.url))data.set('DescriptionHtml',source.value+'<p>[Screenshot attached]</p>');
+          if(pending.some(x=>x.url)){const draft=quill.root.cloneNode(true);draft.querySelectorAll('img').forEach(img=>{if(pending.some(x=>x.url===img.getAttribute('src')))img.replaceWith(document.createTextNode('[Screenshot attached]'));});data.set('DescriptionHtml',draft.innerHTML);}
           const created=await fetch(form.action,{method:'POST',body:data,headers:{Accept:'application/json'}});
           if(!created.ok||!created.headers.get('content-type')?.includes('application/json')){const text=await created.text();const parsed=new DOMParser().parseFromString(text,'text/html');throw new Error(parsed.querySelector('.validation')?.textContent.trim()||'Unable to save. Check all required fields.');}
           const result=await created.json();id=result.id;form.querySelector('[name=RowVersion]').value=result.rowVersion;form.dataset.entryId=id;form.action='/entries/'+id+'/edit';
@@ -68,4 +71,4 @@ async function newEntry(event){
 }
 document.querySelectorAll('[data-new-entry]').forEach(a=>a.addEventListener('click',newEntry));
 dialog?.querySelector('.dialog-close').addEventListener('click',()=>dialog.close());
-document.addEventListener('keydown',e=>{if(e.key==='n'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.target.closest('input,textarea,[contenteditable=true]')&&document.querySelector('[data-new-entry]'))newEntry(e);});
+document.addEventListener('keydown',e=>{if(e.key==='n'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.target.closest('input,textarea,[contenteditable=true]')&&document.querySelector('[data-new-entry]'))newEntry(e);});
