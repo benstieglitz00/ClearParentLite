@@ -11,6 +11,7 @@ public partial class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        PdfSharp.Fonts.GlobalFontSettings.UseWindowsFontsUnderWindows = true;
         builder.Services.AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection.")));
@@ -33,11 +34,19 @@ public partial class Program
         builder.Services.AddScoped<AccessService>(); builder.Services.AddScoped<ContentService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
         builder.Services.AddScoped<IPrivateStorage, PrivateStorage>();
+        builder.Services.AddScoped<IExportService, ExportService>();
         builder.Services.AddRateLimiter(o => {
             o.RejectionStatusCode = 429;
             o.AddPolicy("account", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
         });
         var app = builder.Build();
+        if(args.Contains("--initialize-db")) {
+            using var scope=app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+            var roles=scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            foreach(var role in new[]{"Administrator","Parent","Read-only Guest"})if(!await roles.RoleExistsAsync(role))await roles.CreateAsync(new IdentityRole(role));
+            return;
+        }
         if (!app.Environment.IsDevelopment()) { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
         app.UseHttpsRedirection();
         app.Use(async (context, next) => {

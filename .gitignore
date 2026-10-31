@@ -8,3 +8,5 @@ TestResults/
 *.local.json
 *.db
 .playwright/
+.test-tools/
+artifacts/

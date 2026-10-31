@@ -6,12 +6,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 namespace ClearParentLite.Controllers;
-[Authorize(Policy="Parent")]
 public class SharesController(AppDbContext db,AccessService access,UserManager<ApplicationUser> users,IEmailService email,IConfiguration config) : Controller
 {
     async Task<SharesPage> Page(ShareInput input) => new(await db.Shares.Where(s=>s.OwnerUserId==access.UserId).Include(s=>s.Entries).OrderByDescending(s=>s.CreatedUtc).ToListAsync(),await db.Entries.Where(e=>e.OwnerUserId==access.UserId).OrderByDescending(e=>e.EventDate).ToListAsync(),input);
-    [HttpGet("/shares")] public async Task<IActionResult> Index() => View(await Page(new()));
-    [HttpPost("/shares")] public async Task<IActionResult> Create(ShareInput input) {
+    [Authorize(Policy="Parent"),HttpGet("/shares")] public async Task<IActionResult> Index() => View(await Page(new()));
+    [Authorize(Policy="Parent"),HttpPost("/shares")] public async Task<IActionResult> Create(ShareInput input) {
         if(!Enum.IsDefined(input.Scope) || !Enum.IsDefined(input.AccessMethod)) return BadRequest();
         var ids=input.EntryIds.Distinct().ToArray();
         if(input.Scope==ShareScope.SelectedEntries && (ids.Length==0 || ids.Length>500 || await db.Entries.CountAsync(e=>e.OwnerUserId==access.UserId && ids.Contains(e.Id))!=ids.Length)) ModelState.AddModelError("","Choose entries from your own timeline.");
@@ -27,7 +26,7 @@ public class SharesController(AppDbContext db,AccessService access,UserManager<A
         catch { grant.RevokedUtc=DateTime.UtcNow; await db.SaveChangesAsync(); TempData["Notice"]="Invitation delivery failed. The grant was revoked; check email configuration and retry."; return Redirect("/shares"); }
         TempData["Notice"]="Invitation sent. The recipient must sign in and accept it."; return Redirect("/shares");
     }
-    [HttpPost("/shares/{id:guid}/revoke")] public async Task<IActionResult> Revoke(Guid id) {
+    [Authorize(Policy="Parent"),HttpPost("/shares/{id:guid}/revoke")] public async Task<IActionResult> Revoke(Guid id) {
         var grant=await db.Shares.SingleOrDefaultAsync(s=>s.Id==id && s.OwnerUserId==access.UserId); if(grant==null) return NotFound();
         grant.RevokedUtc=DateTime.UtcNow; access.Audit(access.UserId!,"ShareRevoked","Share",id.ToString()); await db.SaveChangesAsync(); return Redirect("/shares");
     }

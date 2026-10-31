@@ -7,9 +7,9 @@ Original repository inspection: pristine ASP.NET Core MVC .NET 10 starter; basel
 - [x] 1. Foundation: SQL Server EF/Identity schema, migrations, DI and test project.
 - [x] 2. Public pages, local/Google authentication, confirmation/reset and roles.
 - [x] 3. Owner-scoped timeline, filters, CRUD, revisions and concurrency.
-- [ ] 4. Rich editor, private attachments, validation and paste uploads.
-- [ ] 5. Append-only updates and revision history.
-- [ ] 6. Selected/timeline shares, verified invitations, expiry and revocation.
+- [ ] 4. Rich editor, private attachments, validation and paste uploads (backend tested; browser check pending).
+- [x] 5. Append-only updates and revision history.
+- [x] 6. Selected/timeline shares, verified invitations, expiry and revocation.
 - [ ] 7. PDF/ZIP export, audit, security, responsive UI and documentation.
 
 ## Decisions / external setup
@@ -24,6 +24,8 @@ Original repository inspection: pristine ASP.NET Core MVC .NET 10 starter; basel
 - Foundation build: 0 warnings/errors. Initial sanitizer/file/token tests: 8 passed.
 - Dependency advisories resolved with HtmlSanitizer 9.2.1039 and explicit Pkcs 10.0.14.
 - HTTP/SQL integration suite: 15 passed, including real Identity cookies, CSRF, registration/confirmation/reset, cross-user reads/mutations/search, revisions and stale-write conflicts. Google live credentials remain external setup.
+- Expanded suite: 16 passed. Selected link scope, hidden entries/files, invitation matching and acceptance by Guest role, full-timeline future entries, expiry/revocation, ZIP/PDF generation, manifest/file hash integrity and cross-owner export denial covered.
+- LocalDB access can fail under the sandbox's alternate identity; approved `dotnet test` outside the sandbox succeeds. Test databases have unique `ClearParentLiteTest_` names and are dropped by the fixture.
 
 ## Resume notes
-Phases 1–3 complete. Quill 2.0.3 vendored locally; file/sharing/update UI implemented pending expanded tests and browser verification. Export is next. Use HTTPS launch profile; configured origin matches port 7273. No push/deploy performed.
+Phases 1–3, 5–6 complete. Export backend and UI implemented; visual PDF/browser verification, hardening and README remain. Use HTTPS launch profile; configured origin matches port 7273. No push/deploy performed.
