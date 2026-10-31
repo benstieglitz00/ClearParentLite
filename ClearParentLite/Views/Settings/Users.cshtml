@@ -1,0 +1,3 @@
+@model List<ClearParentLite.Data.ApplicationUser>
+@{ ViewData["Title"]="User administration"; }
+<h1>User administration</h1><p class="muted">Operational account management does not grant access to private entries.</p><section class="card">@foreach(var user in Model){<article class="grant"><strong>@user.Email</strong><small>@user.DisplayName · @(user.DisabledUtc==null?"Enabled":"Disabled")</small><form method="post" action="/admin/users/@user.Id/toggle">@Html.AntiForgeryToken()<button>@(user.DisabledUtc==null?"Disable":"Enable") account</button></form></article>}</section>

@@ -1,0 +1,5 @@
+@model TimelinePage
+@{ ViewData["Title"]="Shared timeline"; }
+<span class="eyebrow">Read-only access</span><h1>Shared timeline</h1><p class="muted">This view contains only the records shared with you. Access may expire or be revoked.</p>
+<section class="card timeline">@if(Model.Entries.Count==0){<div class="empty">No entries in this share.</div>}@foreach(var e in Model.Entries){<a href="/entries/@e.Id" class="timeline-row"><strong>@e.Title</strong><time>@e.EventDate.ToString("MMM d, yyyy")</time></a>}</section>
+<nav class="pagination">@if(Model.Page>1){<a href="/shared/@ViewBag.ShareId?page=@(Model.Page-1)">← Previous</a>}<span>Page @Model.Page</span>@if(Model.HasMore){<a href="/shared/@ViewBag.ShareId?page=@(Model.Page+1)">Next →</a>}</nav>

@@ -1,0 +1,11 @@
+@model EntryInput
+@{ ViewData["Title"]=Model.Id.HasValue?"Edit entry":"New entry"; }
+<div class="narrow"><a href="@(Model.Id.HasValue?$"/entries/{Model.Id}":"/timeline")" class="back">← Back to timeline</a><h1>@ViewData["Title"]</h1><p class="muted">Capture what happened. Keep the details together.</p>
+<form method="post" class="card entry-form" data-entry-form data-entry-id="@Model.Id"><div asp-validation-summary="All" class="validation"></div>
+<label asp-for="Title"></label><input asp-for="Title" placeholder="Give this event a clear title" autofocus />
+<label asp-for="EventDate">Occurred on</label><input asp-for="EventDate" type="date" /><small>The event date can be different from the date you record it.</small>
+<label asp-for="DescriptionHtml"></label><textarea asp-for="DescriptionHtml" class="rich-source" data-editor></textarea>
+<input asp-for="RowVersion" type="hidden" />
+@if(Model.Id.HasValue){<label asp-for="ChangeReason"></label><input asp-for="ChangeReason" /><p class="muted">Edits are saved as a new revision. Existing revisions remain available.</p>}
+<label for="entry-files">Attachments &amp; screenshots</label><input id="entry-files" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx" multiple data-entry-files /><small>Drop files here or paste screenshots into the editor. Up to 20 MB each. New-entry files upload after the entry is saved.</small><div data-file-status role="status" aria-live="polite"></div>
+<div class="actions"><button type="submit" class="primary">Save entry</button><a href="@(Model.Id.HasValue?$"/entries/{Model.Id}":"/timeline")">Cancel</a></div></form></div>

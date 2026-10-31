@@ -1,50 +1,9 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ClearParentLite</title>
-    <script type="importmap"></script>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/ClearParentLite.styles.css" asp-append-version="true" />
-</head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ClearParentLite</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - ClearParentLite - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-</body>
-</html>
+@{
+    var signedIn=User.Identity?.IsAuthenticated==true;
+}
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>@ViewData["Title"] · ClearParent Lite</title><link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /><link rel="stylesheet" href="~/lib/quill/quill.snow.css" /></head>
+<body><a class="skip-link" href="#main">Skip to content</a><header class="site-header"><a class="brand" href="/"><span class="brand-mark">c</span>ClearParent <span class="lite">lite</span></a><nav aria-label="Main navigation"><a href="/resources">Resources</a>@if(signedIn){<a href="/timeline">Timeline</a><a href="/shares">Sharing</a><a href="/exports">Exports</a><a href="/settings">Settings</a><form method="post" action="/account/logout">@Html.AntiForgeryToken()<button class="text-button">Sign out</button></form>}else{<a href="/account/login">Log in</a><a href="/account/register" class="button primary small">Get started</a>}</nav></header>
+<div class="app-shell">@if(signedIn){<aside class="sidebar"><span class="workspace-label">PERSONAL WORKSPACE</span><a href="/timeline">? &nbsp; Timeline</a><a href="/shares">? &nbsp; Sharing</a><a href="/exports">? &nbsp; Exports</a><a href="/settings">? &nbsp; Settings</a><div class="sidebar-note">A clearer record.<br />A little more peace of mind.</div></aside>}<main id="main" class="@(signedIn?"workspace":"public-main")">@if(TempData["Notice"] is string notice){<div class="notice" role="status">@notice</div>}@RenderBody()</main></div>
+<footer>ClearParent Lite <span>Thoughtful documentation for everyday parenting.</span><a href="/Home/Privacy">Privacy</a></footer><dialog id="entry-dialog"><button type="button" class="dialog-close" aria-label="Close new entry">×</button><div data-dialog-content></div></dialog>
+<script src="~/lib/quill/quill.js"></script><script src="~/js/site.js" asp-append-version="true"></script>@await RenderSectionAsync("Scripts", required:false)</body></html>

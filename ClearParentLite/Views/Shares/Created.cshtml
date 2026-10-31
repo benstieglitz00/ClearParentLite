@@ -1,0 +1,2 @@
+@{ ViewData["Title"]="Share link created"; }
+<section class="auth card"><h1>Your read-only link</h1><p>Copy this link now. It is shown only once.</p><label for="share-url">Share URL</label><input id="share-url" value="@ViewBag.ShareUrl" readonly /><p class="notice">Anyone with this link can view the selected scope and download its attachments. You can revoke it from Sharing.</p><a href="/shares" class="button">Manage shares</a></section>

@@ -6,6 +6,8 @@ namespace ClearParentLite.Controllers
 {
     public class HomeController : Controller
     {
+        [HttpGet("/resources")]
+        public IActionResult Resources() => View();
         public IActionResult Index()
         {
             return View();

@@ -5,8 +5,8 @@ Original repository inspection: pristine ASP.NET Core MVC .NET 10 starter; basel
 
 ## Checklist
 - [x] 1. Foundation: SQL Server EF/Identity schema, migrations, DI and test project.
-- [ ] 2. Public pages, local/Google authentication, confirmation/reset and roles.
-- [ ] 3. Owner-scoped timeline, filters, CRUD, revisions and concurrency.
+- [x] 2. Public pages, local/Google authentication, confirmation/reset and roles.
+- [x] 3. Owner-scoped timeline, filters, CRUD, revisions and concurrency.
 - [ ] 4. Rich editor, private attachments, validation and paste uploads.
 - [ ] 5. Append-only updates and revision history.
 - [ ] 6. Selected/timeline shares, verified invitations, expiry and revocation.
@@ -23,6 +23,7 @@ Original repository inspection: pristine ASP.NET Core MVC .NET 10 starter; basel
 - Initial migration generated and applied successfully to isolated `ClearParentLiteDev` LocalDB.
 - Foundation build: 0 warnings/errors. Initial sanitizer/file/token tests: 8 passed.
 - Dependency advisories resolved with HtmlSanitizer 9.2.1039 and explicit Pkcs 10.0.14.
+- HTTP/SQL integration suite: 15 passed, including real Identity cookies, CSRF, registration/confirmation/reset, cross-user reads/mutations/search, revisions and stale-write conflicts. Google live credentials remain external setup.
 
 ## Resume notes
-Foundation complete. Identity/timeline/file backend started; UI, integration tests, sharing and export remain in progress. Use HTTPS launch profile; configured origin must match port 7273.
+Phases 1–3 complete. Quill 2.0.3 vendored locally; file/sharing/update UI implemented pending expanded tests and browser verification. Export is next. Use HTTPS launch profile; configured origin matches port 7273. No push/deploy performed.

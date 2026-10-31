@@ -32,6 +32,7 @@ public partial class Program
         builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, VerifiedClaimsFactory>();
         builder.Services.AddScoped<AccessService>(); builder.Services.AddScoped<ContentService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IPrivateStorage, PrivateStorage>();
         builder.Services.AddRateLimiter(o => {
             o.RejectionStatusCode = 429;
             o.AddPolicy("account", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));

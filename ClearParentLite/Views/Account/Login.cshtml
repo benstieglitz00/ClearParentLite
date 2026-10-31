@@ -1,0 +1,8 @@
+@model LoginInput
+@{ ViewData["Title"]="Welcome back"; }
+<section class="auth card"><span class="eyebrow">Your space for clarity</span><h1>Welcome back</h1><p class="muted">Sign in to your private timeline.</p>
+<form method="post"><div asp-validation-summary="All" class="validation"></div><input asp-for="ReturnUrl" type="hidden" />
+<label asp-for="Email"></label><input asp-for="Email" autocomplete="email" /><label asp-for="Password"></label><input asp-for="Password" autocomplete="current-password" /><button class="primary" type="submit">Sign in</button></form>
+@if(ViewBag.Google==true){<form method="post" action="/account/google">@Html.AntiForgeryToken()<button type="submit">Continue with Google</button></form>}
+else {<small>Google sign-in is not configured. Email sign-in is available.</small>}
+<p><a href="/account/forgot-password">Forgot password?</a> · <a href="/account/resend-confirmation">Resend confirmation</a></p><p>New here? <a href="/account/register">Create an account</a></p></section>

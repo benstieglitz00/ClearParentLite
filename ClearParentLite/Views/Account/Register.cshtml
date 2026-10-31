@@ -1,0 +1,9 @@
+@model RegisterInput
+@{ ViewData["Title"]="Create your account"; }
+<section class="auth card"><span class="eyebrow">A little clarity starts here</span><h1>Create your account</h1><p class="muted">A private place to keep your parenting story organized.</p>
+<form method="post"><div asp-validation-summary="All" class="validation"></div>
+<label asp-for="DisplayName"></label><input asp-for="DisplayName" autocomplete="name" />
+<label asp-for="Email"></label><input asp-for="Email" autocomplete="email" />
+<label asp-for="Password"></label><input asp-for="Password" autocomplete="new-password" /><small>At least 12 characters, with uppercase, lowercase, a number and a symbol.</small>
+<label asp-for="ConfirmPassword"></label><input asp-for="ConfirmPassword" autocomplete="new-password" />
+<button class="primary" type="submit">Create account</button></form><p>Already have an account? <a href="/account/login">Sign in</a></p></section>

@@ -1,0 +1,3 @@
+@model EmailInput
+@{ var resend=Context.Request.Path.Value!.Contains("resend"); ViewData["Title"]=resend?"Resend confirmation":"Reset your password"; }
+<section class="auth card"><h1>@ViewData["Title"]</h1><p>Enter your account email to receive a secure link.</p><form method="post"><div asp-validation-summary="All" class="validation"></div><label asp-for="Email"></label><input asp-for="Email" autocomplete="email" /><button class="primary" type="submit">Send link</button></form></section>
